@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Emotion Recognition System</title>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .file-label {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .file-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .video-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        #video, #imageCanvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #4CAF50;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stat-label {
+            font-size: 1.1em;
+            margin-top: 5px;
+            opacity: 0.9;
+        }
+        
+        .emotion-breakdown {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .emotion-breakdown h3 {
+            margin-top: 0;
+            text-align: center;
+            font-size: 1.5em;
+        }
+        
+        .emotion-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .emotion-name {
+            width: 100px;
+            font-weight: bold;
+        }
+        
+        .emotion-progress {
+            flex: 1;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            margin: 0 10px;
+            overflow: hidden;
+        }
+        
+        .emotion-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        
+        .emotion-percent {
+            width: 50px;
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+        }
+        
+        .understanding-meter {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .understanding-score {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .understanding-good { color: #4CAF50; }
+        .understanding-medium { color: #FF9800; }
+        .understanding-poor { color: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 Student Emotion Recognition System</h1>
+        
+        <div class="controls">
+            <button id="startCamera">Start Camera</button>
+            <button id="stopCamera" disabled>Stop Camera</button>
+            <label for="fileInput" class="file-label">Upload Image</label>
+            <input type="file" id="fileInput" accept="image/*">
+            <button id="demoMode">Demo Mode</button>
+        </div>
+        
+        <div id="loading" class="loading">Loading AI models... This may take a moment.</div>
+        
+        <div class="video-container" id="videoContainer" style="display: block;">
+            <video id="video" autoplay muted style="display: none;"></video>
+            <canvas id="overlay" style="display: none;"></canvas>
+            <canvas id="imageCanvas" style="display: none;"></canvas>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="faceCount">0</div>
+                <div class="stat-label">Students Detected</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="attentiveCount">0</div>
+                <div class="stat-label">Attentive Students</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="confusedCount">0</div>
+                <div class="stat-label">Possibly Confused</div>
+            </div>
+        </div>
+        
+        <div class="understanding-meter">
+            <h3>📊 Class Understanding Level</h3>
+            <div class="understanding-score" id="understandingScore">--</div>
+            <div id="understandingText">Analyzing...</div>
+        </div>
+        
+        <div class="emotion-breakdown">
+            <h3>🎭 Emotion Analysis</h3>
+            <div id="emotionBars"></div>
+        </div>
+    </div>
+
+    <script>
+        let video = null;
+        let canvas = null;
+        let ctx = null;
+        let isModelLoaded = false;
+        let stream = null;
+        let animationId = null;
+        
+        const emotions = ['happy', 'sad', 'angry', 'fearful', 'disgusted', 'surprised', 'neutral'];
+        const emotionColors = {
+            happy: '#4CAF50',
+            sad: '#2196F3', 
+            angry: '#f44336',
+            fearful: '#9C27B0',
+            disgusted: '#795548',
+            surprised: '#FF9800',
+            neutral: '#607D8B'
+        };
+        
+        let currentEmotions = {};
+        emotions.forEach(emotion => currentEmotions[emotion] = 0);
+        
+        async function loadModels() {
+            document.getElementById('loading').innerHTML = 'Loading AI models... This may take a moment.';
+            
+            try {
+                // Wait for faceapi to be available
+                if (typeof faceapi === 'undefined') {
+                    throw new Error('Face-api.js library not loaded');
+                }
+                
+                console.log('Starting model loading...');
+                
+                // Load models with better error handling
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri('/models/'),
+                    faceapi.nets.faceExpressionNet.loadFromUri('/models/')
+                ]).catch(async (error) => {
+                    console.log('Local models not found, trying CDN...');
+                    return Promise.all([
+                        faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/'),
+                        faceapi.nets.faceExpressionNet.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/')
+                    ]);
+                });
+                
+                console.log('Models loaded successfully');
+                isModelLoaded = true;
+                document.getElementById('loading').innerHTML = '<div style="color: #4CAF50;">✅ AI models loaded! You can now start the camera or upload an image.</div>';
+                document.getElementById('videoContainer').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading models:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div style="color: #f44336;">
+                        <h3>Unable to load AI models</h3>
+                        <p>This might be due to network issues or browser restrictions.</p>
+                        <p>Try refreshing the page or check your internet connection.</p>
+                        <button onclick="loadModels()" style="margin-top: 10px;">Retry</button>
+                    </div>
+                `;
+            }
+        }
+        
+        async function setupCamera() {
+            if (!isModelLoaded) {
+                alert('Please wait for AI models to load first.');
+                return;
+            }
+            
+            video = document.getElementById('video');
+            canvas = document.getElementById('overlay');
+            ctx = canvas.getContext('2d');
+            
+            try {
+                console.log('Requesting camera access...');
+                
+                const constraints = {
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    }
+                };
+                
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                
+                // Hide image canvas if it was being used
+                const imageCanvas = document.getElementById('imageCanvas');
+                imageCanvas.style.display = 'none';
+                
+                // Show video elements
+                video.style.display = 'block';
+                canvas.style.display = 'block';
+                
+                video.addEventListener('loadedmetadata', () => {
+                    console.log('Video metadata loaded');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.style.width = video.offsetWidth + 'px';
+                    canvas.style.height = video.offsetHeight + 'px';
+                });
+                
+                // Start detection when video is playing
+                video.addEventListener('playing', () => {
+                    console.log('Video is playing, starting detection...');
+                    if (!animationId) {
+                        detectEmotions();
+                    }
+                });
+                
+                document.getElementById('startCamera').disabled = true;
+                document.getElementById('stopCamera').disabled = false;
+                
+            } catch (error) {
+                console.error('Camera error:', error);
+                let errorMessage = 'Could not access camera. ';
+                
+                switch(error.name) {
+                    case 'NotAllowedError':
+                        errorMessage += 'Please allow camera access and try again.';
+                        break;
+                    case 'NotFoundError':
+                        errorMessage += 'No camera found on this device.';
+                        break;
+                    case 'NotReadableError':
+                        errorMessage += 'Camera is being used by another application.';
+                        break;
+                    default:
+                        errorMessage += 'Please check your camera settings and try again.';
+                }
+                
+                alert(errorMessage);
+                
+                // Reset button states
+                document.getElementById('startCamera').disabled = false;
+                document.getElementById('stopCamera').disabled = true;
+            }
+        }
+        
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                if (video) {
+                    video.srcObject = null;
+                }
+                stream = null;
+            }
+            
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            
+            // Hide video elements
+            if (video) {
+                video.style.display = 'none';
+            }
+            if (canvas && ctx) {
+                canvas.style.display = 'none';
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            resetStats();
+            
+            document.getElementById('startCamera').disabled = false;
+            document.getElementById('stopCamera').disabled = true;
+            
+            console.log('Camera stopped');
+        }
+        
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!isModelLoaded) {
+                alert('Please wait for AI models to load first.');
+                return;
+            }
+            
+            console.log('Processing uploaded image:', file.name);
+            
+            const img = new Image();
+            const imageCanvas = document.getElementById('imageCanvas');
+            const imageCtx = imageCanvas.getContext('2d');
+            
+            img.onload = async () => {
+                console.log('Image loaded, dimensions:', img.width, 'x', img.height);
+                
+                // Stop camera if running
+                if (stream) {
+                    stopCamera();
+                }
+                
+                // Calculate display size while maintaining aspect ratio
+                const maxWidth = 800;
+                const maxHeight = 600;
+                let displayWidth = img.width;
+                let displayHeight = img.height;
+                
+                if (displayWidth > maxWidth) {
+                    displayHeight = (displayHeight * maxWidth) / displayWidth;
+                    displayWidth = maxWidth;
+                }
+                if (displayHeight > maxHeight) {
+                    displayWidth = (displayWidth * maxHeight) / displayHeight;
+                    displayHeight = maxHeight;
+                }
+                
+                console.log('Display size:', displayWidth, 'x', displayHeight);
+                
+                // Setup image canvas
+                imageCanvas.width = displayWidth;
+                imageCanvas.height = displayHeight;
+                imageCanvas.style.display = 'block';
+                imageCanvas.style.width = displayWidth + 'px';
+                imageCanvas.style.height = displayHeight + 'px';
+                imageCanvas.style.border = '2px solid #4CAF50';
+                imageCanvas.style.borderRadius = '15px';
+                
+                // Hide video and its overlay
+                if (video) {
+                    video.style.display = 'none';
+                }
+                if (canvas) {
+                    canvas.style.display = 'none';
+                }
+                
+                // Draw image first
+                imageCtx.drawImage(img, 0, 0, displayWidth, displayHeight);
+                
+                console.log('Image drawn, starting emotion detection...');
+                
+                // Then detect emotions and overlay them
+                setTimeout(async () => {
+                    await detectEmotionsOnImage(imageCanvas, img, displayWidth, displayHeight);
+                }, 100);
+            };
+            
+            img.onerror = (error) => {
+                console.error('Error loading image:', error);
+                alert('Error loading image. Please try a different image.');
+            };
+            
+            img.src = URL.createObjectURL(file);
+        }
+        
+        async function detectEmotionsOnImage(imageCanvas, originalImage, displayWidth, displayHeight) {
+            if (!isModelLoaded) return;
+            
+            try {
+                console.log('Starting face detection...');
+                
+                const detections = await faceapi.detectAllFaces(imageCanvas, 
+                    new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
+                    .withFaceExpressions();
+                
+                console.log('Detections found:', detections.length);
+                
+                const imageCtx = imageCanvas.getContext('2d');
+                
+                // Clear and redraw the original image
+                imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+                imageCtx.drawImage(originalImage, 0, 0, displayWidth, displayHeight);
+                
+                if (detections.length > 0) {
+                    // Draw detections on top
+                    drawDetections(imageCtx, detections);
+                    updateStats(detections);
+                    console.log('Emotion detection complete!');
+                } else {
+                    console.log('No faces detected in the image');
+                    resetStats();
+                    
+                    // Show message on canvas
+                    imageCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    imageCtx.fillRect(10, 10, 300, 60);
+                    imageCtx.fillStyle = '#333';
+                    imageCtx.font = '16px Arial';
+                    imageCtx.fillText('No faces detected in this image', 20, 35);
+                    imageCtx.fillText('Try a different image with clear faces', 20, 55);
+                }
+                
+            } catch (error) {
+                console.error('Error detecting emotions:', error);
+                
+                // Show error on canvas
+                const imageCtx = imageCanvas.getContext('2d');
+                imageCtx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                imageCtx.fillRect(10, 10, 280, 40);
+                imageCtx.fillStyle = '#fff';
+                imageCtx.font = '14px Arial';
+                imageCtx.fillText('Error processing image', 20, 35);
+            }
+        }
+        
+        async function detectEmotions() {
+            if (!isModelLoaded || !video || video.paused || video.ended || !stream) {
+                return;
+            }
+            
+            try {
+                // Check if video is ready
+                if (video.videoWidth === 0 || video.videoHeight === 0) {
+                    animationId = requestAnimationFrame(detectEmotions);
+                    return;
+                }
+                
+                const detections = await faceapi.detectAllFaces(video, 
+                    new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
+                    .withFaceExpressions();
+                
+                // Clear canvas
+                if (ctx) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw detections
+                    if (detections.length > 0) {
+                        drawDetections(ctx, detections);
+                        updateStats(detections);
+                    } else {
+                        // No faces detected
+                        resetStats();
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error detecting emotions:', error);
+                // Continue trying even if there's an error
+            }
+            
+            // Continue detection loop only if camera is still active
+            if (stream && !video.paused && !video.ended) {
+                animationId = requestAnimationFrame(detectEmotions);
+            }
+        }
+        
+        function drawDetections(context, detections) {
+            detections.forEach((detection, index) => {
+                const { x, y, width, height } = detection.detection.box;
+                const expressions = detection.expressions;
+                
+                // Draw face rectangle
+                context.strokeStyle = '#4CAF50';
+                context.lineWidth = 3;
+                context.strokeRect(x, y, width, height);
+                
+                // Find dominant emotion
+                const dominantEmotion = Object.keys(expressions).reduce((a, b) => 
+                    expressions[a] > expressions[b] ? a : b
+                );
+                
+                // Draw emotion label with background
+                const label = `${dominantEmotion.toUpperCase()} (${Math.round(expressions[dominantEmotion] * 100)}%)`;
+                const labelWidth = context.measureText(label).width + 20;
+                
+                context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                context.fillRect(x, y - 30, labelWidth, 25);
+                
+                context.fillStyle = '#fff';
+                context.font = '16px Arial';
+                context.fillText(label, x + 10, y - 10);
+                
+                // Draw student number
+                context.fillStyle = 'rgba(76, 175, 80, 0.8)';
+                context.fillRect(x + width - 40, y, 35, 25);
+                
+                context.fillStyle = '#fff';
+                context.font = 'bold 14px Arial';
+                context.fillText(`#${index + 1}`, x + width - 35, y + 17);
+            });
+        }
+        
+        function updateStats(detections) {
+            const faceCount = detections.length;
+            let attentiveCount = 0;
+            let confusedCount = 0;
+            
+            // Reset emotion totals
+            emotions.forEach(emotion => currentEmotions[emotion] = 0);
+            
+            detections.forEach(detection => {
+                const expressions = detection.expressions;
+                
+                // Add to emotion totals
+                Object.keys(expressions).forEach(emotion => {
+                    if (emotions.includes(emotion)) {
+                        currentEmotions[emotion] += expressions[emotion];
+                    }
+                });
+                
+                // Categorize students
+                const happy = expressions.happy || 0;
+                const neutral = expressions.neutral || 0;
+                const sad = expressions.sad || 0;
+                const angry = expressions.angry || 0;
+                const fearful = expressions.fearful || 0;
+                
+                // Consider attentive if happy or neutral with high confidence
+                if ((happy > 0.3) || (neutral > 0.4)) {
+                    attentiveCount++;
+                }
+                
+                // Consider confused if sad, angry, or fearful
+                if (sad > 0.3 || angry > 0.2 || fearful > 0.3) {
+                    confusedCount++;
+                }
+            });
+            
+            // Update UI
+            document.getElementById('faceCount').textContent = faceCount;
+            document.getElementById('attentiveCount').textContent = attentiveCount;
+            document.getElementById('confusedCount').textContent = confusedCount;
+            
+            // Calculate understanding level
+            let understandingLevel = 0;
+            let understandingText = 'No students detected';
+            let understandingClass = 'understanding-medium';
+            
+            if (faceCount > 0) {
+                understandingLevel = Math.round((attentiveCount / faceCount) * 100);
+                
+                if (understandingLevel >= 80) {
+                    understandingText = 'Excellent! Students are engaged';
+                    understandingClass = 'understanding-good';
+                } else if (understandingLevel >= 60) {
+                    understandingText = 'Good engagement level';
+                    understandingClass = 'understanding-medium';
+                } else if (understandingLevel >= 40) {
+                    understandingText = 'Some students may need help';
+                    understandingClass = 'understanding-medium';
+                } else {
+                    understandingText = 'Consider reviewing the content';
+                    understandingClass = 'understanding-poor';
+                }
+            }
+            
+            const scoreElement = document.getElementById('understandingScore');
+            scoreElement.textContent = faceCount > 0 ? `${understandingLevel}%` : '--';
+            scoreElement.className = `understanding-score ${understandingClass}`;
+            document.getElementById('understandingText').textContent = understandingText;
+            
+            // Update emotion bars
+            updateEmotionBars(faceCount);
+        }
+        
+        function updateEmotionBars(faceCount) {
+            const emotionBarsContainer = document.getElementById('emotionBars');
+            emotionBarsContainer.innerHTML = '';
+            
+            if (faceCount === 0) {
+                emotionBarsContainer.innerHTML = '<p style="text-align: center; opacity: 0.7;">No faces detected</p>';
+                return;
+            }
+            
+            emotions.forEach(emotion => {
+                const percentage = Math.round((currentEmotions[emotion] / faceCount) * 100);
+                
+                const barElement = document.createElement('div');
+                barElement.className = 'emotion-bar';
+                barElement.innerHTML = `
+                    <div class="emotion-name">${emotion.charAt(0).toUpperCase() + emotion.slice(1)}</div>
+                    <div class="emotion-progress">
+                        <div class="emotion-fill" style="width: ${percentage}%; background-color: ${emotionColors[emotion]};"></div>
+                    </div>
+                    <div class="emotion-percent">${percentage}%</div>
+                `;
+                
+                emotionBarsContainer.appendChild(barElement);
+            });
+        }
+        
+        function runDemo() {
+            // Simulate classroom emotions for demonstration
+            const mockDetections = [
+                { expressions: { happy: 0.8, neutral: 0.1, sad: 0.05, angry: 0.02, fearful: 0.02, surprised: 0.01, disgusted: 0.0 } },
+                { expressions: { neutral: 0.7, happy: 0.2, sad: 0.05, angry: 0.02, fearful: 0.02, surprised: 0.01, disgusted: 0.0 } },
+                { expressions: { sad: 0.6, neutral: 0.2, happy: 0.1, angry: 0.05, fearful: 0.03, surprised: 0.02, disgusted: 0.0 } },
+                { expressions: { happy: 0.9, neutral: 0.05, sad: 0.02, angry: 0.01, fearful: 0.01, surprised: 0.01, disgusted: 0.0 } },
+                { expressions: { neutral: 0.8, happy: 0.15, sad: 0.02, angry: 0.01, fearful: 0.01, surprised: 0.01, disgusted: 0.0 } }
+            ];
+            
+            updateStats(mockDetections);
+            
+            // Create visual representation on canvas
+            if (canvas && ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw mock faces
+                mockDetections.forEach((detection, index) => {
+                    const x = 50 + (index % 3) * 200;
+                    const y = 50 + Math.floor(index / 3) * 200;
+                    const width = 150;
+                    const height = 180;
+                    
+                    // Draw face rectangle
+                    ctx.strokeStyle = '#4CAF50';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(x, y, width, height);
+                    
+                    // Find dominant emotion
+                    const expressions = detection.expressions;
+                    const dominantEmotion = Object.keys(expressions).reduce((a, b) => 
+                        expressions[a] > expressions[b] ? a : b
+                    );
+                    
+                    // Draw emotion label
+                    const label = `${dominantEmotion.toUpperCase()} (${Math.round(expressions[dominantEmotion] * 100)}%)`;
+                    const labelWidth = ctx.measureText(label).width + 20;
+                    
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(x, y - 30, labelWidth, 25);
+                    
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '16px Arial';
+                    ctx.fillText(label, x + 10, y - 10);
+                    
+                    // Draw student number
+                    ctx.fillStyle = 'rgba(76, 175, 80, 0.8)';
+                    ctx.fillRect(x + width - 40, y, 35, 25);
+                    
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillText(`#${index + 1}`, x + width - 35, y + 17);
+                });
+            }
+        }
+        
+        function resetStats() {
+            document.getElementById('faceCount').textContent = '0';
+            document.getElementById('attentiveCount').textContent = '0';
+            document.getElementById('confusedCount').textContent = '0';
+            document.getElementById('understandingScore').textContent = '--';
+            document.getElementById('understandingText').textContent = 'Analyzing...';
+            emotions.forEach(emotion => currentEmotions[emotion] = 0);
+            updateEmotionBars(0);
+        }
+        
+        // Event listeners
+        document.getElementById('startCamera').addEventListener('click', setupCamera);
+        document.getElementById('stopCamera').addEventListener('click', stopCamera);
+        document.getElementById('fileInput').addEventListener('change', handleImageUpload);
+        document.getElementById('demoMode').addEventListener('click', () => {
+            if (!canvas) {
+                canvas = document.getElementById('overlay');
+                ctx = canvas.getContext('2d');
+                canvas.width = 600;
+                canvas.height = 400;
+            }
+            runDemo();
+        });
+        
+        // Load models on page load with delay to ensure library is loaded
+        window.addEventListener('load', () => {
+            setTimeout(loadModels, 1000);
+        });
+    </script>
+</body>
+</html>
